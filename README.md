@@ -6,8 +6,6 @@
 ✅ **POST /api/auth/register** – Đăng ký tài khoản mới.  
 ✅ **POST /api/auth/logout** – Đăng xuất và hủy token hiện tại.  
 ❌ **POST /api/auth/refresh** – Cấp lại token mới khi token cũ gần hết hạn.  
-❌ **GET /api/me** – Lấy thông tin hồ sơ người dùng hiện tại.  
-❌ **PATCH /api/me** – Cập nhật thông tin cá nhân của người dùng.
 
 ---
 
