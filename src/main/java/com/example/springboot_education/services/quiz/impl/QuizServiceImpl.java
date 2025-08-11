@@ -1,5 +1,11 @@
 package com.example.springboot_education.services.quiz.impl;
 
+import java.time.Instant;
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+
+import com.example.springboot_education.dtos.activitylogs.ActivityLogCreateDTO;
 import com.example.springboot_education.dtos.quiz.OptionDTO;
 import com.example.springboot_education.dtos.quiz.QuestionDTO;
 import com.example.springboot_education.dtos.quiz.QuizRequestDTO;
@@ -17,13 +23,11 @@ import com.example.springboot_education.repositories.quiz.QuizOptionRepository;
 import com.example.springboot_education.repositories.quiz.QuizQuestionRepository;
 import com.example.springboot_education.repositories.quiz.QuizRepository;
 import com.example.springboot_education.repositories.quiz.QuizSubmissionRepository;
+import com.example.springboot_education.services.ActivityLogService;
 import com.example.springboot_education.services.quiz.QuizService;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-
-import java.time.Instant;
-import java.util.List;
 
 @Slf4j
 @Service
@@ -35,7 +39,7 @@ public class QuizServiceImpl implements QuizService {
     private final QuizMapper2 quizMapper2;
     private final QuizSubmissionRepository quizSubmissionRepository;
     private final UsersJpaRepository userRepository;
-
+    private final ActivityLogService activityLogService;
     @Override
     public QuizBaseDTO createQuiz(QuizRequestDTO quizDTO) {
         Quiz quiz = quizMapper2.toEntity(quizDTO);
@@ -62,9 +66,18 @@ public class QuizServiceImpl implements QuizService {
             }
         }
 
+        // 📌 Ghi log CREATE quiz
+        activityLogService.log(new ActivityLogCreateDTO(
+                "CREATE",
+                quiz.getId(),
+                "quizzes",
+                "Tạo quiz: " + quiz.getTitle(),
+                quiz.getClassField() != null ? quiz.getClassField().getId() : null,
+                quizDTO.getCreatedBy() // cần đảm bảo QuizRequestDTO có field này
+        ));
+
         return getQuizForTeacher(quiz.getId());
     }
-
 
     @Override
     public List<QuizResponseTeacherDTO> getAllQuizzes() {
@@ -111,5 +124,46 @@ public class QuizServiceImpl implements QuizService {
                 .toList();
 
         return quizMapper2.toStudentDto(quiz, questionDTOs);
+    }
+
+    // 📌 Thêm hàm UPDATE quiz (nếu bạn muốn log UPDATE)
+    public QuizBaseDTO updateQuiz(Integer quizId, QuizRequestDTO quizDTO) {
+        Quiz quiz = quizRepository.findById(quizId)
+                .orElseThrow(() -> new RuntimeException("Quiz not found with id: " + quizId));
+
+        quiz.setTitle(quizDTO.getTitle());
+        quiz.setDescription(quizDTO.getDescription());
+        quiz.setUpdatedAt(Instant.now());
+        quiz = quizRepository.save(quiz);
+
+        // 📌 Ghi log UPDATE
+        activityLogService.log(new ActivityLogCreateDTO(
+                "UPDATE",
+                quiz.getId(),
+                "quizzes",
+                "Cập nhật quiz: " + quiz.getTitle(),
+                quiz.getClassField() != null ? quiz.getClassField().getId() : null,
+                quizDTO.getCreatedBy()
+        ));
+
+        return getQuizForTeacher(quiz.getId());
+    }
+
+    // 📌 Thêm hàm DELETE quiz (nếu bạn muốn log DELETE)
+    public void deleteQuiz(Integer quizId, Integer userId) {
+        Quiz quiz = quizRepository.findById(quizId)
+                .orElseThrow(() -> new RuntimeException("Quiz not found with id: " + quizId));
+
+        quizRepository.delete(quiz);
+
+        // 📌 Ghi log DELETE
+        activityLogService.log(new ActivityLogCreateDTO(
+                "DELETE",
+                quiz.getId(),
+                "quizzes",
+                "Xóa quiz: " + quiz.getTitle(),
+                quiz.getClassField() != null ? quiz.getClassField().getId() : null,
+                userId
+        ));
     }
 }
